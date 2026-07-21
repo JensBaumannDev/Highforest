@@ -1,6 +1,15 @@
+// ============================================================
+// ENEMY (base class)
+// Shared behaviour for all enemies: health, damage, death.
+// Snail, Boar and Bee extend this.
+// ============================================================
+
 import Phaser from 'phaser';
 
 export default class Enemy extends Phaser.Physics.Arcade.Sprite {
+
+  // ---------- SETUP ----------
+
   constructor(scene, x, y, texture) {
     super(scene, x, y, texture);
     scene.add.existing(this);
@@ -8,6 +17,8 @@ export default class Enemy extends Phaser.Physics.Arcade.Sprite {
 
     this.health = 1;
   }
+
+  // ---------- DAMAGE & DEATH ----------
 
   takeDamage(amount = 1) {
     this.health -= amount;
@@ -20,6 +31,9 @@ export default class Enemy extends Phaser.Physics.Arcade.Sprite {
     this.destroy();
   }
 
+  // ---------- UPDATE LOOP ----------
+
+  // Subclasses override this with their own movement.
   update(time, delta) {
   }
 }

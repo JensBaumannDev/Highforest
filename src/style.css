@@ -1,8 +1,18 @@
+/* ============================================================
+   PAGE STYLES
+   Only job: give Phaser a box to draw in and centre it.
+   The canvas size itself is Phaser's business (Scale.FIT).
+   ============================================================ */
+
+/* ---------- RESET ---------- */
+
 * {
     margin: 0;
     padding: 0;
     box-sizing: border-box;
 }
+
+/* ---------- PAGE ---------- */
 
 html,
 body {
@@ -10,6 +20,12 @@ body {
     height: 100%;
     background-color: #221931;
 }
+
+/* ---------- GAME CONTAINER ---------- */
+
+/* Phaser measures this box with getBoundingClientRect and fits the
+   canvas into it. Padding would be invisible to that measurement,
+   so the margin around the game comes from inset. */
 
 #game-container {
     position: fixed;
@@ -19,6 +35,10 @@ body {
     justify-content: center;
     line-height: 0;
 }
+
+/* ---------- CANVAS ---------- */
+
+/* No width/height here — Phaser sets those. */
 
 #game-container canvas {
     image-rendering: pixelated;
