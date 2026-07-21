@@ -49,7 +49,9 @@ const TILES = {
   grass: { left: 25, mid: 27, right: 29 },
   dirt: { left: 50, mid: 52, right: 54 },
   bush: 'bush',
-  water: { top: [481, 482, 483, 484], body: [506, 507, 508, 509] },
+  // Only frames with opaque neighbours in the sheet - the ones at the edge of
+  // the water block bleed the empty area next to them into the tile.
+  water: { top: [482, 483], body: [507] },
   bridge: {
     postTop: [180, 184],
     post: [205, 209],
