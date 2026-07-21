@@ -7,11 +7,11 @@
 import Phaser from 'phaser';
 import { SCENES, TILE_SIZE } from '../utils/constants.js';
 
-// ---------- CLOUD REGIONS ----------
+// ============================================================
+// TEXTURE REGIONS
+// ============================================================
 
-// The six clouds are scattered across the sheet instead of sitting on a
-// grid, so each one needs its own region: [name, x, y, width, height].
-// Both cloud sheets use this same layout, they only differ in shading.
+// [name, x, y, width, height] - both cloud sheets share this layout.
 const CLOUD_FRAMES = [
   ['cloud-a', 8, 13, 60, 35],
   ['cloud-b', 81, 13, 30, 35],
@@ -20,6 +20,22 @@ const CLOUD_FRAMES = [
   ['cloud-e', 16, 86, 41, 31],
   ['cloud-f', 72, 86, 31, 31]
 ];
+
+// [name, x, y, width, height] - five tree sizes, measured out because the
+// rows have different heights and cannot be grid-sliced.
+const TREE_FRAMES = [
+  ['tree-1', 0, 0, 107, 368],
+  ['tree-2', 2, 391, 108, 313],
+  ['tree-3', 4, 720, 88, 208],
+  ['tree-4', 6, 944, 88, 144],
+  ['tree-5', 5, 1092, 70, 108]
+];
+
+// The tree block repeats once more this far to the right, in a second shape variant.
+const TREE_HALF_OFFSET = 672;
+
+// All tree sheets share the same layout, so they get the same frames.
+export const TREE_TEXTURES = ['tree-yellow', 'tree-dark'];
 
 export default class PreloadScene extends Phaser.Scene {
   constructor() {
@@ -35,22 +51,18 @@ export default class PreloadScene extends Phaser.Scene {
     this.loadCharacter();
   }
 
-  // ---------- ENVIRONMENT ----------
-
+  // Loads sky, trees, tiles and clouds.
   loadEnvironment() {
     this.load.image('background', 'assets/environment/background/Background.png');
-    this.load.spritesheet('tree1', 'assets/environment/trees/Yellow-Tree.png', { frameWidth: 115, frameHeight: 300 });
+    this.load.image('tree-yellow', 'assets/environment/trees/Yellow-Tree.png');
+    this.load.image('tree-dark', 'assets/environment/trees/Dark-Tree.png');
     this.load.spritesheet('tiles', 'assets/environment/tiles/Tiles.png', { frameWidth: TILE_SIZE, frameHeight: TILE_SIZE });
     this.load.image('trees-bg', 'assets/environment/trees/Trees-Background.png');
     this.load.image('clouds', 'assets/environment/clouds/Clouds.png');
     this.load.image('clouds-flat', 'assets/environment/clouds/Clouds-Flat.png');
   }
 
-  // ---------- CHARACTER ----------
-
-  // Frame sizes differ per sheet: the attack is 96 wide because the
-  // sword swing reaches past the body. Slicing it at 64 cuts the
-  // swing off and scrambles the frame order.
+  // Loads the player sheets - frame sizes differ per sheet, the attack is wider.
   loadCharacter() {
     this.load.spritesheet('player-idle', 'assets/character/idle/Idle-Sheet.png', { frameWidth: 64, frameHeight: 80 });
     this.load.spritesheet('player-run', 'assets/character/run/Run-Sheet.png', { frameWidth: 64, frameHeight: 80 });
@@ -69,9 +81,7 @@ export default class PreloadScene extends Phaser.Scene {
     this.scene.start(SCENES.MENU);
   }
 
-  // ---------- PLAYER ANIMATIONS ----------
-
-  // repeat: -1 loops forever, repeat: 0 plays once.
+  // Registers the player animations - repeat -1 loops, 0 plays once.
   createPlayerAnimations() {
     this.anims.create({
       key: 'idle',
@@ -102,10 +112,7 @@ export default class PreloadScene extends Phaser.Scene {
     });
   }
 
-  // ---------- CUSTOM TEXTURE FRAMES ----------
-
-  // The bush does not sit on the 16px tile grid, so it gets its own
-  // named region on the tile texture instead of a second image load.
+  // Names the regions on sheets that do not sit on a uniform grid.
   createCustomFrames() {
     const bg = this.textures.get('trees-bg');
     bg.add('trees-dark-a', 0, 0, 0, 96, 256);
@@ -117,11 +124,17 @@ export default class PreloadScene extends Phaser.Scene {
     bg.add('mtn-dark', 0, 704, 0, 95, 256);
     bg.add('mtn-light', 0, 801, 0, 95, 256);
 
-    // Both sheets get the same frame names, so a layer can swap between the
-    // shaded and the flat clouds without touching the frame list.
     ['clouds', 'clouds-flat'].forEach(key => {
       const texture = this.textures.get(key);
       CLOUD_FRAMES.forEach(([name, x, y, w, h]) => texture.add(name, 0, x, y, w, h));
+    });
+
+    TREE_TEXTURES.forEach(key => {
+      const texture = this.textures.get(key);
+      TREE_FRAMES.forEach(([name, x, y, w, h]) => {
+        texture.add(`${name}a`, 0, x, y, w, h);
+        texture.add(`${name}b`, 0, x + TREE_HALF_OFFSET, y, w, h);
+      });
     });
 
     this.textures.get('tiles').add('bush', 0, 280, 0, 120, 48);

@@ -8,8 +8,6 @@ import Phaser from 'phaser';
 
 export default class Collectible extends Phaser.Physics.Arcade.Sprite {
 
-  // ---------- SETUP ----------
-
   constructor(scene, x, y, texture = 'coin') {
     super(scene, x, y, texture);
     scene.add.existing(this);
@@ -18,8 +16,7 @@ export default class Collectible extends Phaser.Physics.Arcade.Sprite {
     this.body.setAllowGravity(false);
   }
 
-  // ---------- PICKUP ----------
-
+  // Removes the item once the player touches it.
   collect() {
     this.destroy();
   }

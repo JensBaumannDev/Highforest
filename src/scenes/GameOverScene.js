@@ -12,8 +12,7 @@ export default class GameOverScene extends Phaser.Scene {
     super({ key: SCENES.GAME_OVER });
   }
 
-  // ---------- LIFECYCLE ----------
-
+  // Waits for a click, then returns to the menu.
   create() {
     this.input.once('pointerdown', () => {
       this.scene.start(SCENES.MENU);

@@ -8,8 +8,6 @@ import Phaser from 'phaser';
 
 export default class Enemy extends Phaser.Physics.Arcade.Sprite {
 
-  // ---------- SETUP ----------
-
   constructor(scene, x, y, texture) {
     super(scene, x, y, texture);
     scene.add.existing(this);
@@ -18,8 +16,7 @@ export default class Enemy extends Phaser.Physics.Arcade.Sprite {
     this.health = 1;
   }
 
-  // ---------- DAMAGE & DEATH ----------
-
+  // Subtracts health and kills the enemy once it runs out.
   takeDamage(amount = 1) {
     this.health -= amount;
     if (this.health <= 0) {
@@ -27,13 +24,12 @@ export default class Enemy extends Phaser.Physics.Arcade.Sprite {
     }
   }
 
+  // Removes the enemy from the scene.
   die() {
     this.destroy();
   }
 
-  // ---------- UPDATE LOOP ----------
-
-  // Subclasses override this with their own movement.
+  // Movement, overridden by every subclass.
   update(time, delta) {
   }
 }

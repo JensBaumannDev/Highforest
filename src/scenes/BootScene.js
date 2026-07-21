@@ -12,13 +12,10 @@ export default class BootScene extends Phaser.Scene {
     super({ key: SCENES.BOOT });
   }
 
-  // ---------- LOADING ----------
-
   preload() {
   }
 
-  // ---------- LIFECYCLE ----------
-
+  // Hands over to the asset loader.
   create() {
     this.scene.start(SCENES.PRELOAD);
   }

@@ -5,26 +5,34 @@
 
 import Phaser from 'phaser';
 import { SCENES, GAME_WIDTH, GAME_HEIGHT, TILE_SIZE, TILE_SCALE } from '../utils/constants.js';
+import { TREE_TEXTURES } from './PreloadScene.js';
 import Player from '../entities/Player.js';
 
-// ---------- LEVEL LAYOUT ----------
+// ============================================================
+// LEVEL LAYOUT
+// ============================================================
 
-const LEVEL_SCREENS = 3;
+const LEVEL_SCREENS = 5;
 
 const BUSH_POSITIONS = [
   80, 140, 310, 480, 520, 730, 950, 1020, 1180,
-  1410, 1460, 1690, 1850, 2100, 2150, 2220, 2450, 2700, 2950, 3100, 3500
+  1410, 1460, 1690, 1850, 2100, 2150, 2220, 2450, 2700, 2950, 3100, 3500,
+  3580, 3640, 3810, 4020, 4240, 4560, 4660, 4720, 4830, 4900,
+  5040, 5360, 5640, 5880, 5940, 6190
 ];
 
 const TREE_POSITIONS = [
-  120, 280, 750, 910, 1100, 1650, 2200, 2380, 2950, 3100, 3450
+  120, 280, 750, 910, 1100, 1650, 2200, 2380, 2950, 3100, 3450,
+  3620, 3880, 3950, 4350, 4660, 5040, 5480, 5840, 6020, 6080, 6230
 ];
 
-// ---------- CLOUD LAYOUT ----------
+// Largest to smallest - this order doubles as the drawing order.
+const TREE_VARIANTS = [
+  'tree-1a', 'tree-1b', 'tree-2a', 'tree-2b', 'tree-3a',
+  'tree-3b', 'tree-4a', 'tree-4b', 'tree-5a', 'tree-5b'
+];
 
-// [xFactor, y, frame]. xFactor is a fraction of the layer width, not a world
-// position: a layer with a small scrollFactor only travels a fraction of the
-// level, so 1.0 means "at the far end of that layer".
+// [xFactor, y, frame] - xFactor is a fraction of the layer width, not a world position.
 const CLOUDS_FAR = [
   [0.04, 150, 'cloud-c'],
   [0.20, 110, 'cloud-f'],
@@ -43,7 +51,6 @@ const CLOUDS_NEAR = [
   [0.93, 310, 'cloud-f']
 ];
 
-// Frame indices in the tile sheet
 const TILE_GRASS = 27;
 const TILE_DIRT = 52;
 
@@ -79,18 +86,13 @@ export default class GameScene extends Phaser.Scene {
   // ENVIRONMENT
   // ============================================================
 
-  // ---------- BACKGROUND ----------
-
-  // scrollFactor 0 pins the sky to the camera, so it never moves.
+  // Draws the pinned sky and every parallax layer, back to front.
   createBackground() {
     this.add.image(0, 0, 'background')
       .setOrigin(0, 0)
       .setDisplaySize(GAME_WIDTH, GAME_HEIGHT)
       .setScrollFactor(0);
-    // Back to front. The clouds come first and drift slowest, so the
-    // mountains pass in front of them. All ground layers stand on the
-    // ground; the tree layers are scaled down so the mountains tower
-    // over them.
+
     this.cloudLayers = [
       this.addCloudLayer('clouds-flat', CLOUDS_FAR, 0.03, 2, 6),
       this.addCloudLayer('clouds', CLOUDS_NEAR, 0.08, 3.2, 14)
@@ -99,12 +101,7 @@ export default class GameScene extends Phaser.Scene {
     this.addParallaxLayer(['trees-dark-a', 'trees-dark-b', 'trees-dark-c'], 0.4, this.GROUND_Y, 0.65);
   }
 
-  // ---------- CLOUDS ----------
-
-  // Clouds hang in the sky instead of standing on the ground, so they are
-  // placed one by one rather than tiled like the tree and mountain strips.
-  // The flat sheet sits furthest back, the shaded one a little closer.
-  // speed is in pixels per second and is handed back to updateClouds.
+  // Places one cloud layer and returns the state updateClouds needs.
   addCloudLayer(texture, clouds, scrollFactor, scale, speed) {
     const width = GAME_WIDTH + (this.LEVEL_WIDTH - GAME_WIDTH) * scrollFactor;
 
@@ -117,10 +114,7 @@ export default class GameScene extends Phaser.Scene {
     return { images, width, speed };
   }
 
-  // Clouds drift left on their own, so the sky keeps moving even while the
-  // player stands still. delta is the milliseconds since the last frame:
-  // dividing by 1000 turns the speed into pixels per second, which keeps the
-  // drift identical on a 60 Hz and a 144 Hz screen.
+  // Drifts every cloud left and wraps it around the layer width.
   updateClouds(delta) {
     const step = delta / 1000;
 
@@ -128,9 +122,6 @@ export default class GameScene extends Phaser.Scene {
       images.forEach(cloud => {
         cloud.x -= speed * step;
 
-        // Once a cloud has left the layer on the left it re-enters on the
-        // right. The wrap uses the layer width, not the screen width, or a
-        // cloud would pop into view mid-screen when the camera sits far right.
         if (cloud.x < -cloud.displayWidth) {
           cloud.x = width + cloud.displayWidth;
         }
@@ -138,10 +129,7 @@ export default class GameScene extends Phaser.Scene {
     });
   }
 
-  // ---------- PARALLAX ----------
-
-  // Fills a strip with repeated frames. A scrollFactor below 1 moves the
-  // layer slower than the camera, which reads as distance.
+  // Fills a strip with repeated frames at the given parallax depth.
   addParallaxLayer(frames, scrollFactor, y, scale = 1, gap = 0) {
     const width = GAME_WIDTH + (this.LEVEL_WIDTH - GAME_WIDTH) * scrollFactor;
     let x = 0;
@@ -153,49 +141,50 @@ export default class GameScene extends Phaser.Scene {
         .setScale(scale)
         .setScrollFactor(scrollFactor);
 
-      // Without a gap the tiles overlap slightly, which hides the
-      // semi-transparent frame edge that would otherwise show as a seam.
-      // Rounding down matters: a fractional scale gives a fractional
-      // displayWidth, and then the overlap would sometimes vanish.
       x += gap > 0 ? image.displayWidth + gap : Math.floor(image.displayWidth) - 1;
       i++;
     }
   }
 
-  // ---------- GROUND ----------
-
-  // Starts one tile left of zero so there is no gap at the level edge.
+  // Builds the ground row: grass collides, the dirt below is decoration.
   createPlatforms() {
     this.platforms = this.physics.add.staticGroup();
 
     for (let x = -this.TILE_DISPLAY; x < this.LEVEL_WIDTH; x += this.TILE_DISPLAY) {
-      // Grass surface (collision)
       this.platforms.create(x, this.GROUND_Y, 'tiles', TILE_GRASS)
         .setOrigin(0, 0)
         .setScale(TILE_SCALE)
         .refreshBody();
 
-      // Dirt below (visual only)
       this.add.image(x, this.GROUND_Y + this.TILE_DISPLAY, 'tiles', TILE_DIRT)
         .setOrigin(0, 0)
         .setScale(TILE_SCALE);
     }
   }
 
-  // ---------- DECORATION ----------
-
-  // Trees first, so the bushes are drawn in front of the trunks.
+  // Places the trees in a seeded random mix, then the bushes in front of them.
   createDecorations() {
-    TREE_POSITIONS.forEach(x => this.addTree(x, this.GROUND_Y));
+    const rng = new Phaser.Math.RandomDataGenerator(['highforest-trees']);
+
+    TREE_POSITIONS
+      .map(x => ({
+        x,
+        texture: rng.pick(TREE_TEXTURES),
+        size: rng.between(0, TREE_VARIANTS.length - 1)
+      }))
+      .sort((a, b) => b.size - a.size)
+      .forEach(({ x, texture, size }) =>
+        this.addTree(x, this.GROUND_Y, texture, TREE_VARIANTS[size]));
+
     BUSH_POSITIONS.forEach(x => this.addBush(x, this.GROUND_Y));
   }
 
-  // Origin (0.5, 1) means "bottom centre": the anchor sits at the
-  // foot of the sprite, so y is simply the ground height.
-  addTree(x, y) {
-    return this.add.image(x, y, 'tree1', 0).setOrigin(0.5, 1);
+  // Adds one tree, anchored at its foot so any size stands on the ground line.
+  addTree(x, y, texture, frame) {
+    return this.add.image(x, y, texture, frame).setOrigin(0.5, 1);
   }
 
+  // Adds one bush, anchored at its foot.
   addBush(x, y) {
     return this.add.image(x, y, 'tiles', 'bush').setOrigin(0.5, 1);
   }
@@ -204,8 +193,7 @@ export default class GameScene extends Phaser.Scene {
   // ENTITIES & CAMERA
   // ============================================================
 
-  // ---------- PLAYER ----------
-
+  // Spawns the player and binds the input keys.
   createPlayer() {
     this.cursors = this.input.keyboard.createCursorKeys();
     this.attackKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.D);
@@ -214,8 +202,7 @@ export default class GameScene extends Phaser.Scene {
     this.physics.add.collider(this.player, this.platforms);
   }
 
-  // ---------- CAMERA & WORLD BOUNDS ----------
-
+  // Limits physics and camera to the level and makes the camera follow the player.
   setupCameraAndWorld() {
     this.physics.world.setBounds(0, 0, this.LEVEL_WIDTH, GAME_HEIGHT);
     this.cameras.main.setBounds(0, 0, this.LEVEL_WIDTH, GAME_HEIGHT);

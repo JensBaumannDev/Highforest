@@ -7,11 +7,7 @@
 import Phaser from 'phaser';
 import { PLAYER_SPEED, PLAYER_JUMP } from '../utils/constants.js';
 
-// ---------- CONFIG ----------
-
-// Body offsets per animation, because the sheets differ in frame size:
-// jump is 64x64, attack is 96x80 (the swing reaches past the body),
-// the rest is 64x80.
+// Body offset per animation, because the sheets differ in frame size.
 const BODY_OFFSET = {
   idle: { x: 22, y: 16 },
   run: { x: 22, y: 16 },
@@ -23,8 +19,6 @@ const BODY_WIDTH = 20;
 const BODY_HEIGHT = 48;
 
 export default class Player extends Phaser.Physics.Arcade.Sprite {
-
-  // ---------- SETUP ----------
 
   constructor(scene, x, y) {
     super(scene, x, y, 'player-idle');
@@ -38,18 +32,16 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
     this.isAttacking = false;
     this.playAnim('idle');
 
-    // Attack animation finished → clear the flag
     this.on('animationcomplete-attack', () => {
       this.isAttacking = false;
     });
   }
 
-  // ---------- ANIMATION ----------
+  // ============================================================
+  // ANIMATION
+  // ============================================================
 
   // Plays an animation and moves the body to the offset that belongs to it.
-  // Skips the call while that animation is already running, so a looping
-  // animation is not restarted every frame. The isPlaying check matters:
-  // without it a finished attack would block the next one.
   playAnim(key) {
     if (this.anims.currentAnim?.key === key && this.anims.isPlaying) {
       return;
@@ -61,8 +53,11 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
     this.setOffset(offset.x, offset.y);
   }
 
-  // ---------- UPDATE LOOP ----------
+  // ============================================================
+  // UPDATE LOOP
+  // ============================================================
 
+  // Reads the input and turns it into movement and the matching animation.
   update(cursors, attackKey) {
     const onGround = this.body.blocked.down || this.body.touching.down;
 
@@ -70,13 +65,11 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
       Phaser.Input.Keyboard.JustDown(cursors.up) ||
       Phaser.Input.Keyboard.JustDown(cursors.space);
 
-    // Start an attack (at any time, as long as none is running)
     if (attackKey && Phaser.Input.Keyboard.JustDown(attackKey) && !this.isAttacking) {
       this.isAttacking = true;
       this.playAnim('attack');
     }
 
-    // Movement
     if (cursors.left.isDown) {
       this.setVelocityX(-PLAYER_SPEED);
       this.setFlipX(true);
@@ -87,13 +80,11 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
       this.setVelocityX(0);
     }
 
-    // Jump
     if (jumpPressed && onGround) {
       this.setVelocityY(-PLAYER_JUMP);
     }
 
-    // Animation — the attack owns the sprite until it finishes. Everything
-    // above has already run, so only the animation choice is skipped.
+    // A running attack owns the sprite, so only the animation choice is skipped.
     if (this.isAttacking) {
       return;
     }

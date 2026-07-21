@@ -1,6 +1,6 @@
 // ============================================================
 // MENU SCENE
-// Title screen. Currently a click anywhere starts the game —
+// Title screen. Currently a click anywhere starts the game -
 // no title, no buttons yet.
 // ============================================================
 
@@ -12,8 +12,7 @@ export default class MenuScene extends Phaser.Scene {
     super({ key: SCENES.MENU });
   }
 
-  // ---------- LIFECYCLE ----------
-
+  // Waits for a click, then starts the level.
   create() {
     this.input.once('pointerdown', () => {
       this.scene.start(SCENES.GAME);
