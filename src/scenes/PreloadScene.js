@@ -34,6 +34,14 @@ const TREE_FRAMES = [
 // The tree block repeats once more this far to the right, in a second shape variant.
 const TREE_HALF_OFFSET = 672;
 
+// [name, x, y, width, height] - the rocks are packed without a grid, so these
+// are measured too. Only the mossy ones, and only sizes the player can clear.
+const ROCK_FRAMES = [
+  ['rock-small', 128, 89, 16, 23],
+  ['rock-mid', 193, 97, 30, 31],
+  ['rock-wide', 212, 132, 59, 28]
+];
+
 // All tree sheets share the same layout, so they get the same frames.
 export const TREE_TEXTURES = ['tree-yellow', 'tree-dark'];
 
@@ -58,6 +66,7 @@ export default class PreloadScene extends Phaser.Scene {
     this.load.image('tree-dark', 'assets/environment/trees/Dark-Tree.png');
     this.load.spritesheet('tiles', 'assets/environment/tiles/Tiles.png', { frameWidth: TILE_SIZE, frameHeight: TILE_SIZE });
     this.load.image('trees-bg', 'assets/environment/trees/Trees-Background.png');
+    this.load.image('rocks', 'assets/environment/Props-Rocks.png');
     this.load.image('clouds', 'assets/environment/clouds/Clouds.png');
     this.load.image('clouds-flat', 'assets/environment/clouds/Clouds-Flat.png');
   }
@@ -136,6 +145,9 @@ export default class PreloadScene extends Phaser.Scene {
         texture.add(`${name}b`, 0, x + TREE_HALF_OFFSET, y, w, h);
       });
     });
+
+    const rocks = this.textures.get('rocks');
+    ROCK_FRAMES.forEach(([name, x, y, w, h]) => rocks.add(name, 0, x, y, w, h));
 
     this.textures.get('tiles').add('bush', 0, 280, 0, 120, 48);
   }
