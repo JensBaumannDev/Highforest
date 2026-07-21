@@ -70,18 +70,10 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
       Phaser.Input.Keyboard.JustDown(cursors.up) ||
       Phaser.Input.Keyboard.JustDown(cursors.space);
 
-    // Start an attack (only while grounded and not already attacking)
-    if (attackKey && Phaser.Input.Keyboard.JustDown(attackKey) && onGround && !this.isAttacking) {
+    // Start an attack (at any time, as long as none is running)
+    if (attackKey && Phaser.Input.Keyboard.JustDown(attackKey) && !this.isAttacking) {
       this.isAttacking = true;
-      this.setVelocityX(0);
       this.playAnim('attack');
-      return; // No further logic this frame
-    }
-
-    // While attacking: no movement, let the animation play out
-    if (this.isAttacking) {
-      this.setVelocityX(0);
-      return;
     }
 
     // Movement
@@ -100,7 +92,12 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
       this.setVelocityY(-PLAYER_JUMP);
     }
 
-    // Animation
+    // Animation — the attack owns the sprite until it finishes. Everything
+    // above has already run, so only the animation choice is skipped.
+    if (this.isAttacking) {
+      return;
+    }
+
     if (!onGround) {
       this.playAnim('jump');
     } else if (cursors.left.isDown || cursors.right.isDown) {
