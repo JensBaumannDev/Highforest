@@ -27,6 +27,7 @@ export default class PreloadScene extends Phaser.Scene {
     this.load.image('background', 'assets/environment/background/Background.png');
     this.load.spritesheet('tree1', 'assets/environment/trees/Yellow-Tree.png', { frameWidth: 115, frameHeight: 300 });
     this.load.spritesheet('tiles', 'assets/environment/tiles/Tiles.png', { frameWidth: TILE_SIZE, frameHeight: TILE_SIZE });
+    this.load.image('trees-bg', 'assets/environment/trees/Trees-Background.png');
   }
 
   // ---------- CHARACTER ----------
@@ -90,6 +91,16 @@ export default class PreloadScene extends Phaser.Scene {
   // The bush does not sit on the 16px tile grid, so it gets its own
   // named region on the tile texture instead of a second image load.
   createCustomFrames() {
+    const bg = this.textures.get('trees-bg');
+    bg.add('trees-dark-a', 0, 0, 0, 96, 256);
+    bg.add('trees-dark-b', 0, 112, 0, 96, 256);
+    bg.add('trees-dark-c', 0, 224, 0, 127, 256);
+    bg.add('trees-light-a', 0, 352, 0, 96, 256);
+    bg.add('trees-light-b', 0, 464, 0, 96, 256);
+    bg.add('trees-light-c', 0, 576, 0, 127, 256);
+    bg.add('mtn-dark', 0, 704, 0, 95, 256);
+    bg.add('mtn-light', 0, 801, 0, 95, 256);
+
     this.textures.get('tiles').add('bush', 0, 280, 0, 120, 48);
   }
 }

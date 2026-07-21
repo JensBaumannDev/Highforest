@@ -63,6 +63,34 @@ export default class GameScene extends Phaser.Scene {
       .setOrigin(0, 0)
       .setDisplaySize(GAME_WIDTH, GAME_HEIGHT)
       .setScrollFactor(0);
+    // Back to front. All layers stand on the ground; the tree layers are
+    // scaled down so the mountains tower over them.
+    this.addParallaxLayer(['mtn-light'], 0.1, this.GROUND_Y);
+    this.addParallaxLayer(['trees-dark-a', 'trees-dark-b', 'trees-dark-c'], 0.4, this.GROUND_Y, 0.65);
+  }
+
+  // ---------- PARALLAX ----------
+
+  // Fills a strip with repeated frames. A scrollFactor below 1 moves the
+  // layer slower than the camera, which reads as distance.
+  addParallaxLayer(frames, scrollFactor, y, scale = 1, gap = 0) {
+    const width = GAME_WIDTH + (this.LEVEL_WIDTH - GAME_WIDTH) * scrollFactor;
+    let x = 0;
+    let i = 0;
+
+    while (x < width) {
+      const image = this.add.image(x, y, 'trees-bg', frames[i % frames.length])
+        .setOrigin(0, 1)
+        .setScale(scale)
+        .setScrollFactor(scrollFactor);
+
+      // Without a gap the tiles overlap slightly, which hides the
+      // semi-transparent frame edge that would otherwise show as a seam.
+      // Rounding down matters: a fractional scale gives a fractional
+      // displayWidth, and then the overlap would sometimes vanish.
+      x += gap > 0 ? image.displayWidth + gap : Math.floor(image.displayWidth) - 1;
+      i++;
+    }
   }
 
   // ---------- GROUND ----------
