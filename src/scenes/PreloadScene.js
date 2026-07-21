@@ -7,6 +7,20 @@
 import Phaser from 'phaser';
 import { SCENES, TILE_SIZE } from '../utils/constants.js';
 
+// ---------- CLOUD REGIONS ----------
+
+// The six clouds are scattered across the sheet instead of sitting on a
+// grid, so each one needs its own region: [name, x, y, width, height].
+// Both cloud sheets use this same layout, they only differ in shading.
+const CLOUD_FRAMES = [
+  ['cloud-a', 8, 13, 60, 35],
+  ['cloud-b', 81, 13, 30, 35],
+  ['cloud-c', 8, 55, 34, 29],
+  ['cloud-d', 67, 55, 50, 29],
+  ['cloud-e', 16, 86, 41, 31],
+  ['cloud-f', 72, 86, 31, 31]
+];
+
 export default class PreloadScene extends Phaser.Scene {
   constructor() {
     super({ key: SCENES.PRELOAD });
@@ -28,6 +42,8 @@ export default class PreloadScene extends Phaser.Scene {
     this.load.spritesheet('tree1', 'assets/environment/trees/Yellow-Tree.png', { frameWidth: 115, frameHeight: 300 });
     this.load.spritesheet('tiles', 'assets/environment/tiles/Tiles.png', { frameWidth: TILE_SIZE, frameHeight: TILE_SIZE });
     this.load.image('trees-bg', 'assets/environment/trees/Trees-Background.png');
+    this.load.image('clouds', 'assets/environment/clouds/Clouds.png');
+    this.load.image('clouds-flat', 'assets/environment/clouds/Clouds-Flat.png');
   }
 
   // ---------- CHARACTER ----------
@@ -100,6 +116,13 @@ export default class PreloadScene extends Phaser.Scene {
     bg.add('trees-light-c', 0, 576, 0, 127, 256);
     bg.add('mtn-dark', 0, 704, 0, 95, 256);
     bg.add('mtn-light', 0, 801, 0, 95, 256);
+
+    // Both sheets get the same frame names, so a layer can swap between the
+    // shaded and the flat clouds without touching the frame list.
+    ['clouds', 'clouds-flat'].forEach(key => {
+      const texture = this.textures.get(key);
+      CLOUD_FRAMES.forEach(([name, x, y, w, h]) => texture.add(name, 0, x, y, w, h));
+    });
 
     this.textures.get('tiles').add('bush', 0, 280, 0, 120, 48);
   }

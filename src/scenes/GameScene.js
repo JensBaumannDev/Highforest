@@ -20,6 +20,29 @@ const TREE_POSITIONS = [
   120, 280, 750, 910, 1100, 1650, 2200, 2380, 2950, 3100, 3450
 ];
 
+// ---------- CLOUD LAYOUT ----------
+
+// [xFactor, y, frame]. xFactor is a fraction of the layer width, not a world
+// position: a layer with a small scrollFactor only travels a fraction of the
+// level, so 1.0 means "at the far end of that layer".
+const CLOUDS_FAR = [
+  [0.04, 150, 'cloud-c'],
+  [0.20, 110, 'cloud-f'],
+  [0.35, 175, 'cloud-a'],
+  [0.52, 125, 'cloud-d'],
+  [0.68, 165, 'cloud-b'],
+  [0.86, 130, 'cloud-e']
+];
+
+const CLOUDS_NEAR = [
+  [0.10, 265, 'cloud-a'],
+  [0.28, 320, 'cloud-e'],
+  [0.45, 245, 'cloud-b'],
+  [0.62, 300, 'cloud-d'],
+  [0.78, 260, 'cloud-c'],
+  [0.93, 310, 'cloud-f']
+];
+
 // Frame indices in the tile sheet
 const TILE_GRASS = 27;
 const TILE_DIRT = 52;
@@ -49,6 +72,7 @@ export default class GameScene extends Phaser.Scene {
 
   update(time, delta) {
     this.player.update(this.cursors, this.attackKey);
+    this.updateClouds(delta);
   }
 
   // ============================================================
@@ -63,10 +87,55 @@ export default class GameScene extends Phaser.Scene {
       .setOrigin(0, 0)
       .setDisplaySize(GAME_WIDTH, GAME_HEIGHT)
       .setScrollFactor(0);
-    // Back to front. All layers stand on the ground; the tree layers are
-    // scaled down so the mountains tower over them.
+    // Back to front. The clouds come first and drift slowest, so the
+    // mountains pass in front of them. All ground layers stand on the
+    // ground; the tree layers are scaled down so the mountains tower
+    // over them.
+    this.cloudLayers = [
+      this.addCloudLayer('clouds-flat', CLOUDS_FAR, 0.03, 2, 6),
+      this.addCloudLayer('clouds', CLOUDS_NEAR, 0.08, 3.2, 14)
+    ];
     this.addParallaxLayer(['mtn-light'], 0.1, this.GROUND_Y);
     this.addParallaxLayer(['trees-dark-a', 'trees-dark-b', 'trees-dark-c'], 0.4, this.GROUND_Y, 0.65);
+  }
+
+  // ---------- CLOUDS ----------
+
+  // Clouds hang in the sky instead of standing on the ground, so they are
+  // placed one by one rather than tiled like the tree and mountain strips.
+  // The flat sheet sits furthest back, the shaded one a little closer.
+  // speed is in pixels per second and is handed back to updateClouds.
+  addCloudLayer(texture, clouds, scrollFactor, scale, speed) {
+    const width = GAME_WIDTH + (this.LEVEL_WIDTH - GAME_WIDTH) * scrollFactor;
+
+    const images = clouds.map(([xFactor, y, frame]) =>
+      this.add.image(width * xFactor, y, texture, frame)
+        .setScale(scale)
+        .setScrollFactor(scrollFactor)
+    );
+
+    return { images, width, speed };
+  }
+
+  // Clouds drift left on their own, so the sky keeps moving even while the
+  // player stands still. delta is the milliseconds since the last frame:
+  // dividing by 1000 turns the speed into pixels per second, which keeps the
+  // drift identical on a 60 Hz and a 144 Hz screen.
+  updateClouds(delta) {
+    const step = delta / 1000;
+
+    this.cloudLayers.forEach(({ images, width, speed }) => {
+      images.forEach(cloud => {
+        cloud.x -= speed * step;
+
+        // Once a cloud has left the layer on the left it re-enters on the
+        // right. The wrap uses the layer width, not the screen width, or a
+        // cloud would pop into view mid-screen when the camera sits far right.
+        if (cloud.x < -cloud.displayWidth) {
+          cloud.x = width + cloud.displayWidth;
+        }
+      });
+    });
   }
 
   // ---------- PARALLAX ----------
