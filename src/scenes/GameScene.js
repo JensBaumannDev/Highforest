@@ -7,6 +7,7 @@ import Phaser from 'phaser';
 import { SCENES, GAME_WIDTH, GAME_HEIGHT, TILE_SIZE, TILE_SCALE } from '../utils/constants.js';
 import { TREE_TEXTURES } from './PreloadScene.js';
 import Player from '../entities/Player.js';
+import Bee from '../entities/Bee.js';
 
 // ============================================================
 // LEVEL DATA
@@ -21,6 +22,13 @@ const LEVEL = {
   // Loose rocks flanking each bridge head, decoration only.
   rockFrames: ['rock-mid', 'rock-small'],
 
+  // Big trunks that carry a hive, given as the tile of their left edge.
+  // Drawn at the player's scale, not TILE_SCALE - at 4 the trunk alone is as
+  // tall as the whole screen and the hive outgrows the character.
+  bigTrees: [7, 33, 60],
+  bigTreeScale: 2,
+  beesPerHive: 3,
+
   bushes: [
     80, 140, 310, 480, 520, 730, 950, 1020, 1180,
     1410, 1460, 1690, 1850, 2100, 2150, 2220, 2450, 2700, 2950, 3100, 3500,
@@ -33,10 +41,11 @@ const LEVEL = {
     3620, 3880, 3950, 4350, 4660, 5040, 5480, 5840, 6020, 6080, 6230
   ],
 
-  // Largest to smallest - this order doubles as the drawing order.
+  // Largest to smallest - this order doubles as the drawing order. The sheet
+  // holds two smaller sizes as well, but at 144 and 108px they barely reach
+  // the player and read as stunted rather than distant.
   treeVariants: [
-    'tree-1a', 'tree-1b', 'tree-2a', 'tree-2b', 'tree-3a',
-    'tree-3b', 'tree-4a', 'tree-4b', 'tree-5a', 'tree-5b'
+    'tree-1a', 'tree-1b', 'tree-2a', 'tree-2b', 'tree-3a', 'tree-3b'
   ]
 };
 
@@ -49,6 +58,16 @@ const TILES = {
   grass: { left: 25, mid: 27, right: 29 },
   dirt: { left: 50, mid: 52, right: 54 },
   bush: 'bush',
+
+  // Tiles per row in the sheet, needed to walk a block frame by frame.
+  columns: 25,
+
+  // Multi-tile pieces: top-left frame plus the size of the block.
+  bigTree: {
+    crown: { frame: 10, cols: 2, rows: 2 },
+    trunk: { frame: 60, cols: 2, rows: 8 },
+    hive: { frame: 162, cols: 2, rows: 3 }
+  },
   // Only frames with opaque neighbours in the sheet - the ones at the edge of
   // the water block bleed the empty area next to them into the tile.
   water: { top: [482, 483], body: [507] },
@@ -89,11 +108,13 @@ export default class GameScene extends Phaser.Scene {
     this.LEVEL_TILES = this.LEVEL_WIDTH / this.TILE_DISPLAY;
     this.GROUND_ROW = GAME_HEIGHT / this.TILE_DISPLAY - 2;
     this.GROUND_Y = this.GROUND_ROW * this.TILE_DISPLAY;
+    this.BIG_TREE_TILE = TILE_SIZE * LEVEL.bigTreeScale;
 
     this.createBackground();
     this.createPlatforms();
     this.createRocks();
     this.createDecorations();
+    this.createBigTrees();
     this.createPlayer();
     this.setupCameraAndWorld();
 
@@ -102,6 +123,7 @@ export default class GameScene extends Phaser.Scene {
 
   update(time, delta) {
     this.player.update(this.cursors, this.attackKey);
+    this.bees.forEach(bee => bee.update(time));
     this.updateClouds(delta);
   }
 
@@ -193,6 +215,20 @@ export default class GameScene extends Phaser.Scene {
     return LEVEL.waterGaps.some(([x, width]) => tileX >= x && tileX < x + width);
   }
 
+  // True across a gap and the bridge around it - the post sits one tile out,
+  // the loose rock two. Nothing tall belongs in that stretch.
+  isBridge(tileX) {
+    return LEVEL.waterGaps.some(([x, width]) => tileX >= x - 2 && tileX <= x + width + 1);
+  }
+
+  // True around a big trunk, its hive included, plus air on either side.
+  isBigTree(tileX) {
+    const { trunk, hive } = TILES.bigTree;
+    const width = (trunk.cols + hive.cols) * this.BIG_TREE_TILE / this.TILE_DISPLAY;
+
+    return LEVEL.bigTrees.some(x => tileX >= x - 2 && tileX < x + width + 2);
+  }
+
   // Adds one ground column, switching to the bank tiles next to water.
   addGround(tileX) {
     const side = this.isWater(tileX + 1) ? 'right' : this.isWater(tileX - 1) ? 'left' : 'mid';
@@ -262,10 +298,12 @@ export default class GameScene extends Phaser.Scene {
   // Places the trees in a seeded random mix, then the bushes in front of them.
   createDecorations() {
     const rng = new Phaser.Math.RandomDataGenerator(['highforest-trees']);
-    const onLand = x => !this.isWater(Math.floor(x / this.TILE_DISPLAY));
+    const tileOf = x => Math.floor(x / this.TILE_DISPLAY);
+    const onLand = x => !this.isWater(tileOf(x));
+    const hasRoom = x => !this.isBridge(tileOf(x)) && !this.isBigTree(tileOf(x));
 
     LEVEL.trees
-      .filter(onLand)
+      .filter(hasRoom)
       .map(x => ({
         x,
         texture: rng.pick(TREE_TEXTURES),
@@ -288,6 +326,51 @@ export default class GameScene extends Phaser.Scene {
         this.addProp((tileX + 0.5) * this.TILE_DISPLAY, 'rocks', frame, TILE_SCALE);
       });
     });
+  }
+
+  // Stamps the big trunks, hangs a hive on each and sets its bees circling.
+  createBigTrees() {
+    const { crown, trunk, hive } = TILES.bigTree;
+
+    this.bees = [];
+
+    LEVEL.bigTrees.forEach(tileX => {
+      const x = tileX * this.TILE_DISPLAY;
+      const top = this.GROUND_Y - trunk.rows * this.BIG_TREE_TILE;
+
+      this.addTileBlock(x, this.GROUND_Y, trunk);
+      this.addTileBlock(x, top, crown);
+
+      // The hive hangs off the right of the trunk, a row below its top.
+      this.addHive(x + trunk.cols * this.BIG_TREE_TILE, top + (1 + hive.rows) * this.BIG_TREE_TILE);
+    });
+  }
+
+  // Hangs a hive and spreads its bees evenly around the loop they fly.
+  addHive(x, bottomY) {
+    const { hive } = TILES.bigTree;
+
+    this.addTileBlock(x, bottomY, hive);
+
+    for (let i = 0; i < LEVEL.beesPerHive; i++) {
+      const phase = (i / LEVEL.beesPerHive) * Math.PI * 2;
+
+      this.bees.push(new Bee(this, x + (hive.cols / 2) * this.BIG_TREE_TILE, bottomY, phase));
+    }
+  }
+
+  // Stamps a rectangular piece of the sheet, anchored at its bottom-left corner.
+  addTileBlock(x, bottomY, { frame, cols, rows }) {
+    const size = this.BIG_TREE_TILE;
+
+    for (let row = 0; row < rows; row++) {
+      for (let col = 0; col < cols; col++) {
+        this.add
+          .image(x + col * size, bottomY - (rows - row) * size, 'tiles', frame + row * TILES.columns + col)
+          .setOrigin(0, 0)
+          .setScale(LEVEL.bigTreeScale);
+      }
+    }
   }
 
   // Adds a prop anchored at its foot, so any size stands on the ground line.

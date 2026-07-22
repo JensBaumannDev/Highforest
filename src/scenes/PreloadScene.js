@@ -57,6 +57,7 @@ export default class PreloadScene extends Phaser.Scene {
   preload() {
     this.loadEnvironment();
     this.loadCharacter();
+    this.loadEnemies();
   }
 
   // Loads sky, trees, tiles and clouds.
@@ -79,12 +80,18 @@ export default class PreloadScene extends Phaser.Scene {
     this.load.spritesheet('player-attack', 'assets/character/attack/Attack-01-Sheet.png', { frameWidth: 96, frameHeight: 80 });
   }
 
+  // Loads the enemy sheets - all of them are 64px frames.
+  loadEnemies() {
+    this.load.spritesheet('bee-fly', 'assets/enemies/bee/Fly-Sheet.png', { frameWidth: 64, frameHeight: 64 });
+  }
+
   // ============================================================
   // SETUP
   // ============================================================
 
   create() {
     this.createPlayerAnimations();
+    this.createEnemyAnimations();
     this.createCustomFrames();
 
     this.scene.start(SCENES.MENU);
@@ -118,6 +125,16 @@ export default class PreloadScene extends Phaser.Scene {
       frames: this.anims.generateFrameNumbers('player-attack', { start: 0, end: 7 }),
       frameRate: 12,
       repeat: 0
+    });
+  }
+
+  // Registers the enemy animations.
+  createEnemyAnimations() {
+    this.anims.create({
+      key: 'bee-fly',
+      frames: this.anims.generateFrameNumbers('bee-fly', { start: 0, end: 3 }),
+      frameRate: 12,
+      repeat: -1
     });
   }
 
